@@ -59,6 +59,7 @@ jobs:
           repository: MythicalLTD/PeltyCMS
           ref: develop
           path: monorepo
+          submodules: recursive
 
       - name: Checkout this addon
         uses: actions/checkout@v4
