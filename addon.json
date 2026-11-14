@@ -1,7 +1,7 @@
 {
   "id": "provisioning-featherpanel",
   "name": "FeatherPanel",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "kind": "provisioning",
   "engine": "wasm",
   "provides": "featherpanel",

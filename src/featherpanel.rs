@@ -53,6 +53,23 @@ fn initial_password(seed: &str) -> String {
     out
 }
 
+/// Fallback when the service carries no suspend reason.
+pub const DEFAULT_SUSPEND_REASON: &str = "Suspended by billing";
+
+/// FeatherPanel requires a moderation reason of 3..=2000 characters for
+/// `/suspend` (400 `MODERATION_REASON_REQUIRED` otherwise).
+pub fn suspend_reason(reason: &str) -> String {
+    let r = reason.trim();
+    if r.is_empty() {
+        return DEFAULT_SUSPEND_REASON.into();
+    }
+    let r: String = r.chars().take(2000).collect();
+    if r.chars().count() < 3 {
+        return format!("{DEFAULT_SUSPEND_REASON}: {r}");
+    }
+    r
+}
+
 async fn find_or_create_user(server: &ServerConn, svc: &ServiceCtx) -> ProvisionResult<u64> {
     let email = svc.customer_email.trim();
     let q: String = email
@@ -213,7 +230,7 @@ impl ProvisioningModule for FeatherPanel {
                 Method::POST,
                 &format!("/api/admin/servers/{}/suspend", remote_id(svc)?),
                 ACCEPT,
-                None,
+                Some(&json!({ "reason": suspend_reason(&svc.suspend_reason) })),
             )
             .await
             .map(|_| ())
@@ -276,5 +293,20 @@ impl ProvisioningModule for FeatherPanel {
             .await
             .map(|_| ())
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn suspend_reason_is_3_to_2000_chars() {
+        assert_eq!(suspend_reason(""), DEFAULT_SUSPEND_REASON);
+        assert_eq!(suspend_reason("   "), DEFAULT_SUSPEND_REASON);
+        assert_eq!(suspend_reason(" overdue "), "overdue");
+        assert_eq!(suspend_reason("ab"), "Suspended by billing: ab");
+        let long = "é".repeat(2500);
+        assert_eq!(suspend_reason(&long).chars().count(), 2000);
     }
 }
